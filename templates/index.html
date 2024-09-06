@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Stream and Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #video-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        video {
+            border: 2px solid black;
+            width: 640px;
+            height: 480px;
+        }
+        #gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .photo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .photo img {
+            width: 200px;
+            height: 150px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Video Stream</h1>
+
+    <!-- Video stream from the URL -->
+    <video id="video-stream" controls autoplay>
+        <source src="http://127.0.0.1:5000/video_feed" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <br>
+    <!-- Button to trigger photo capture -->
+    <button id="capture-btn">Capture Photo</button>
+    <p id="status"></p>
+
+    <h2>Photo Gallery</h2>
+    <div id="gallery"></div>
+
+    <script>
+        // URL of the video stream
+        const videoUrl = "http://192.168.232.103:5000/video_feed";
+        const videoElement = document.getElementById('video-stream');
+
+        // Set video source to the provided video URL
+        videoElement.src = videoUrl;
+
+        // Function to capture photo from the video
+        document.getElementById('capture-btn').addEventListener('click', () => {
+            document.getElementById('status').innerText = 'Capturing photo...';
+            
+            // Create a canvas element to capture frame from video
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to image data URL (base64)
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            // Send the captured image to the server
+            fetch('/capture', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData })  // Send the base64-encoded image data
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.filename) {
+                    document.getElementById('status').innerText = 'Photo captured: ' + data.filename;
+                    loadGallery(); // Reload gallery after capturing photo
+                } else {
+                    document.getElementById('status').innerText = 'Error capturing photo.';
+                }
+            })
+            .catch(err => {
+                document.getElementById('status').innerText = 'Error: ' + err.message;
+            });
+        });
+
+        // Function to load photo gallery
+        function loadGallery() {
+            fetch('/api/photos')
+                .then(response => response.json())
+                .then(data => {
+                    const gallery = document.getElementById('gallery');
+                    gallery.innerHTML = '';  // Clear the gallery
+
+                    data.photos.forEach(photo => {
+                        const photoDiv = document.createElement('div');
+                        photoDiv.classList.add('photo');
+                        
+                        const img = document.createElement('img');
+                        img.src = '/api/photos/' + photo.id;
+                        img.alt = photo.filename;
+
+                        const caption = document.createElement('p');
+                        caption.innerText = photo.filename;
+
+                        photoDiv.appendChild(img);
+                        photoDiv.appendChild(caption);
+
+                        gallery.appendChild(photoDiv);
+                    });
+                });
+        }
+
+        // Load the gallery on page load
+        loadGallery();
+    </script>
+
+</body>
+</html>

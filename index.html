@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .photo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .photo img {
+            width: 200px;
+            height: 150px;
+        }
+    </style>
+</head>
+<body>
+    <Video src="http://192.168.232.102:5000/video_feed">
+    <h1>Capture Photo from Video Stream</h1>
+
+    <!-- Button to trigger photo capture -->
+    <button id="capture-btn">Capture Photo</button>
+
+    <p id="status"></p>
+
+    <h2>Photo Gallery</h2>
+    <div id="gallery"></div>
+
+    <script>
+        // Function to capture photo
+        document.getElementById('capture-btn').addEventListener('click', () => {
+            document.getElementById('status').innerText = 'Capturing photo...';
+            
+            fetch('/capture', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.filename) {
+                        document.getElementById('status').innerText = 'Photo captured: ' + data.filename;
+                        loadGallery(); // Reload gallery after capturing photo
+                    } else {
+                        document.getElementById('status').innerText = 'Error capturing photo.';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('status').innerText = 'Error: ' + err.message;
+                });
+        });
+
+        // Function to load photo gallery
+        function loadGallery() {
+            fetch('/api/photos')
+                .then(response => response.json())
+                .then(data => {
+                    const gallery = document.getElementById('gallery');
+                    gallery.innerHTML = '';  // Clear the gallery
+
+                    data.photos.forEach(photo => {
+                        const photoDiv = document.createElement('div');
+                        photoDiv.classList.add('photo');
+                        
+                        const img = document.createElement('img');
+                        img.src = '/api/photos/' + photo.id;
+                        img.alt = photo.filename;
+
+                        const caption = document.createElement('p');
+                        caption.innerText = photo.filename;
+
+                        photoDiv.appendChild(img);
+                        photoDiv.appendChild(caption);
+
+                        gallery.appendChild(photoDiv);
+                    });
+                });
+        }
+
+        // Load the gallery on page load
+        loadGallery();
+    </script>
+
+</body>
+</html>
