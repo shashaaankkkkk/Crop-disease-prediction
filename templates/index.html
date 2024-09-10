@@ -3,93 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Stream and Capture</title>
+    <title>Plant Disease Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+
+        header {
+            background-color: #2c3e50;
+            width: 100%;
+            padding: 15px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: white;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 24px;
+            padding: 0 20px;
+        }
+
+        nav h1 {
+            font-size: 28px;
+            margin: 0;
+        }
+
         #video-container {
             text-align: center;
             margin-top: 20px;
+            max-width: 640px;
+            width: 100%;
         }
-        video {
+
+        #video-stream {
             border: 2px solid black;
-            width: 640px;
-            height: 480px;
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
         }
+
+        button {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: #34495e;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+        }
+
         #gallery {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-top: 20px;
+            margin-top: 30px;
+            justify-content: center;
+            max-width: 1000px;
         }
+
         .photo {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
         }
+
         .photo img {
-            width: 200px;
-            height: 150px;
+            width: 250px;
+            height: 200px;
+            border-radius: 5px;
+            object-fit: cover;
+            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .photo p {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #555;
         }
     </style>
 </head>
 <body>
+    <header>
+        <nav>
+            <a href="#" class="fa fa-home"></a>
+            <a href="#" class="fa fa-history"></a>
+            <h1>Zeuss Technologies - Plant Disease Detection</h1>
+        </nav>
+    </header>
 
-    <h1>Video Stream</h1>
+    <div id="video-container">
+        <img id="video-stream" src="{{ url_for('video_feed') }}" style ="transform:rotate(180deg);"alt="Video Feed">
+        <button id="capture-btn">Capture Photo</button>
+        <p id="status"></p>
+    </div>
 
-    <!-- Video stream from the URL -->
-    <video id="video-stream" controls autoplay>
-        <source src="http://127.0.0.1:5000/video_feed" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
-
-    <br>
-    <!-- Button to trigger photo capture -->
-    <button id="capture-btn">Capture Photo</button>
-    <p id="status"></p>
-
-    <h2>Photo Gallery</h2>
+    <h2>Processed Photo Gallery</h2>
     <div id="gallery"></div>
 
     <script>
-        // URL of the video stream
-        const videoUrl = "http://192.168.232.103:5000/video_feed";
-        const videoElement = document.getElementById('video-stream');
-
-        // Set video source to the provided video URL
-        videoElement.src = videoUrl;
-
-        // Function to capture photo from the video
         document.getElementById('capture-btn').addEventListener('click', () => {
-            document.getElementById('status').innerText = 'Capturing photo...';
-            
-            // Create a canvas element to capture frame from video
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-            // Convert canvas to image data URL (base64)
-            const imageData = canvas.toDataURL('image/jpeg');
-
-            // Send the captured image to the server
+            document.getElementById('status').innerText = 'Capturing and processing photo...';
             fetch('/capture', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ image: imageData })  // Send the base64-encoded image data
+                method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.filename) {
-                    document.getElementById('status').innerText = 'Photo captured: ' + data.filename;
-                    loadGallery(); // Reload gallery after capturing photo
+                    document.getElementById('status').innerText = 'Photo captured and processed: ' + data.filename;
+                    loadGallery();
                 } else {
-                    document.getElementById('status').innerText = 'Error capturing photo.';
+                    document.getElementById('status').innerText = 'Error capturing or processing photo.';
                 }
             })
             .catch(err => {
@@ -97,36 +147,28 @@
             });
         });
 
-        // Function to load photo gallery
         function loadGallery() {
             fetch('/api/photos')
                 .then(response => response.json())
                 .then(data => {
                     const gallery = document.getElementById('gallery');
-                    gallery.innerHTML = '';  // Clear the gallery
-
+                    gallery.innerHTML = '';
                     data.photos.forEach(photo => {
                         const photoDiv = document.createElement('div');
                         photoDiv.classList.add('photo');
-                        
                         const img = document.createElement('img');
                         img.src = '/api/photos/' + photo.id;
                         img.alt = photo.filename;
-
                         const caption = document.createElement('p');
-                        caption.innerText = photo.filename;
-
+                        caption.innerText = `Disease: ${photo.disease_name}`;
                         photoDiv.appendChild(img);
                         photoDiv.appendChild(caption);
-
                         gallery.appendChild(photoDiv);
                     });
                 });
         }
 
-        // Load the gallery on page load
         loadGallery();
     </script>
-
 </body>
 </html>
